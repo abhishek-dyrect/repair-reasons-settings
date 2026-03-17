@@ -37,7 +37,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { GripVertical, Pencil, Trash2, Check, X, Plus } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import { GripVertical, Pencil, Trash2, Check, X, Plus, ClipboardList } from "lucide-react";
 
 // ---------------------------------------------------------------------------
 // Types
@@ -196,6 +204,8 @@ function ReasonsList({ id, state, onChange }: ReasonsListProps) {
   const [deleteTarget, setDeleteTarget] = useState<Reason | null>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [newLabel, setNewLabel] = useState("");
+  const [bulkOpen, setBulkOpen] = useState(false);
+  const [bulkText, setBulkText] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -246,6 +256,23 @@ function ReasonsList({ id, state, onChange }: ReasonsListProps) {
       setNewLabel("");
       setIsAdding(false);
     }
+  };
+
+  const openBulkEdit = () => {
+    setBulkText(state.reasons.map((r) => r.label).join("\n"));
+    setBulkOpen(true);
+  };
+
+  const handleBulkSave = () => {
+    const lines = bulkText
+      .split("\n")
+      .map((l) => l.trim())
+      .filter(Boolean);
+    onChange({
+      ...state,
+      reasons: lines.map((label) => ({ id: crypto.randomUUID(), label })),
+    });
+    setBulkOpen(false);
   };
 
   return (
@@ -299,6 +326,15 @@ function ReasonsList({ id, state, onChange }: ReasonsListProps) {
                 ({state.reasons.length})
               </span>
             </p>
+            <Button
+              variant="outline"
+              size="sm"
+              className="h-7 px-2.5 text-xs gap-1.5"
+              onClick={openBulkEdit}
+            >
+              <ClipboardList className="h-3.5 w-3.5" />
+              Bulk edit
+            </Button>
           </div>
 
           {state.reasons.length === 0 && !isAdding && (
@@ -383,6 +419,36 @@ function ReasonsList({ id, state, onChange }: ReasonsListProps) {
           )}
         </div>
       </div>
+
+      {/* Bulk edit dialog */}
+      <Dialog open={bulkOpen} onOpenChange={setBulkOpen}>
+        <DialogContent className="sm:max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Bulk edit reasons</DialogTitle>
+            <DialogDescription>
+              One reason per line. Paste directly from a spreadsheet column.
+              This will replace the current list.
+            </DialogDescription>
+          </DialogHeader>
+          <textarea
+            className="w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 resize-none"
+            rows={12}
+            placeholder={"Engine Failure\nBrake Issues\nTire Damage\n..."}
+            value={bulkText}
+            onChange={(e) => setBulkText(e.target.value)}
+            autoFocus
+          />
+          <p className="text-xs text-muted-foreground">
+            {bulkText.split("\n").filter((l) => l.trim()).length} reasons
+          </p>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBulkOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleBulkSave}>Save</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       {/* Delete confirmation */}
       <AlertDialog
